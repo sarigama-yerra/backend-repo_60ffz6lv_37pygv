@@ -1,48 +1,86 @@
 """
-Database Schemas
+Database Schemas for Architectural AI Agent
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model here represents a MongoDB collection. The collection name
+is the lowercase of the class name (e.g., Project -> "project").
 """
-
+from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
+# =============================
+# Core Collections
+# =============================
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class RequiredSpace(BaseModel):
+    name: str
+    min_area: float = Field(..., gt=0, description="Minimum area in m^2")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class SiteConstraints(BaseModel):
+    width: float = Field(..., gt=0, description="Site width in meters")
+    height: float = Field(..., gt=0, description="Site depth/height in meters")
+    boundary_file_url: Optional[str] = None
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Project(BaseModel):
+    title: str
+    project_type: Literal[
+        "Residential (Single-family)",
+        "Residential (Multi-family)",
+        "Commercial (Office)",
+        "Commercial (Retail)",
+        "Mixed-use",
+        "Other"
+    ] = "Residential (Single-family)"
+    site: SiteConstraints
+    required_spaces: List[RequiredSpace] = []
+    adjacency_notes: Optional[str] = None
+    orientation_notes: Optional[str] = None
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+    cultural_tuning: Literal[
+        "General Vastu",
+        "North Indian Vaastu",
+        "South Indian Vaastu",
+        "Islamic Beliefs",
+        "Christian Beliefs",
+        "None"
+    ] = "General Vastu"
+
+    municipal_code: Literal["BBMP", "BMC", "GDC/MCD", "National", "None"] = "National"
+
+    status: Literal["created", "generated", "finalized"] = "created"
+
+class RoomGeometry(BaseModel):
+    name: str
+    x: float
+    y: float
+    width: float
+    height: float
+    area: float
+
+class Plan(BaseModel):
+    plan_id: str
+    site_width: float
+    site_height: float
+    rooms: List[RoomGeometry]
+    score: float = 0.0
+    notes: Optional[str] = None
+
+class ComplianceItem(BaseModel):
+    name: str
+    passed: bool
+    message: str
+    category: Literal["regulatory", "cultural"]
+
+class EstimateItem(BaseModel):
+    item: str
+    unit: str
+    quantity: float
+    unit_rate: Optional[float] = None
+    cost: Optional[float] = None
+
+class Estimate(BaseModel):
+    plan_id: str
+    bom: List[EstimateItem]
+    total_cost_low: Optional[float] = None
+    total_cost_high: Optional[float] = None
+
+# Note: The database helper automatically timestamps documents when inserting.
